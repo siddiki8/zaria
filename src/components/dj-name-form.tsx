@@ -87,7 +87,7 @@ export function DjNameForm({
             setError(null)
             setSaved(false)
           }}
-          placeholder="e.g. ZARIA"
+          placeholder="e.g. DJ Afterglow"
           disabled={disabled || saving}
           className="min-w-[12rem] flex-1"
         />

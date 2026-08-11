@@ -14,8 +14,8 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-white/60">
-        Loading...
+      <div className="app-loader" role="status">
+        <p>Checking your session…</p>
       </div>
     )
   }

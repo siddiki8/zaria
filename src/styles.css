@@ -35,6 +35,23 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+::selection {
+  background: rgba(171, 255, 79, 0.32);
+  color: white;
+}
+
+button,
+a,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .display-font {
   font-family: var(--font-display);
   letter-spacing: 0.04em;
@@ -43,6 +60,26 @@ body {
 .page-shell {
   width: min(960px, calc(100% - 2rem));
   margin-inline: auto;
+}
+
+.app-loader {
+  display: flex;
+  min-height: 12rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.app-loader::before {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  border-top-color: var(--accent);
+  border-radius: 999px;
+  content: "";
+  animation: spinner 700ms linear infinite;
 }
 
 .rank-item {
@@ -182,6 +219,12 @@ body {
   }
 }
 
+@keyframes spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rank-item,
   .rank-flash-up,
@@ -197,6 +240,10 @@ body {
   .rank-item-inner,
   .vote-btn {
     transition: none !important;
+  }
+
+  .app-loader::before {
+    animation: none !important;
   }
 }
 

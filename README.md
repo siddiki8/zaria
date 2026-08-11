@@ -1,4 +1,4 @@
-# Zaria — DJ Voting App
+# What Should Play? — DJ Voting App
 
 Real-time crowd voting for DJ sets. Built with TanStack Start on Cloudflare Workers, Firebase Auth (Google), Firestore, and Last.fm search.
 

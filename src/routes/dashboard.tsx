@@ -17,11 +17,16 @@ export const Route = createFileRoute('/dashboard')({
 function DashboardPage() {
   const { user, profile, logout, saveDjName } = useAuth()
   const [sets, setSets] = useState<DjSet[]>([])
+  const [setsLoading, setSetsLoading] = useState(true)
   const hasDjName = Boolean(profile?.djName.trim())
 
   useEffect(() => {
     if (!user) return
-    return subscribeToDjSets(user.uid, setSets)
+    setSetsLoading(true)
+    return subscribeToDjSets(user.uid, (nextSets) => {
+      setSets(nextSets)
+      setSetsLoading(false)
+    })
   }, [user])
 
   return (
@@ -30,7 +35,7 @@ function DashboardPage() {
         <div className="page-shell">
           <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="display-font text-5xl text-white">ZARIA</p>
+              <p className="display-font text-4xl text-white sm:text-5xl">What Should Play?</p>
               <p className="mt-1 text-white/60">Your sets</p>
             </div>
             <div className="flex gap-2">
@@ -66,9 +71,16 @@ function DashboardPage() {
             ) : null}
           </div>
 
-          {sets.length === 0 ? (
+          {setsLoading ? (
+            <div className="app-loader" role="status">
+              <p>Loading your sets…</p>
+            </div>
+          ) : sets.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-white/10 p-12 text-center">
-              <p className="text-white/60">No sets yet.</p>
+              <h2 className="text-lg font-semibold text-white">Your first set starts here</h2>
+              <p className="mt-2 text-white/60">
+                Create a set, share its link, then let the crowd shape the next track.
+              </p>
               {hasDjName ? (
                 <Link to="/sets/new" className="mt-4 inline-block">
                   <Button>Create your first set</Button>

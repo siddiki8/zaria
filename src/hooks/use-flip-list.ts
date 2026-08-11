@@ -1,7 +1,5 @@
 import { useLayoutEffect, useRef } from 'react'
 
-const FLIP_EASING = 'transform 480ms cubic-bezier(0.16, 1, 0.3, 1)'
-
 function prefersReducedMotion() {
   if (typeof window === 'undefined') return false
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -15,6 +13,7 @@ export function useFlipList(ids: string[]) {
   const nodes = useRef(new Map<string, HTMLElement>())
   const prevRects = useRef(new Map<string, DOMRect>())
   const ready = useRef(false)
+  const idsKey = ids.join('\0')
 
   const register = (id: string) => (node: HTMLElement | null) => {
     if (node) nodes.current.set(id, node)
@@ -22,16 +21,17 @@ export function useFlipList(ids: string[]) {
   }
 
   useLayoutEffect(() => {
+    const idList = idsKey ? idsKey.split('\0') : []
     const nextRects = new Map<string, DOMRect>()
 
-    for (const id of ids) {
+    for (const id of idList) {
       const el = nodes.current.get(id)
       if (!el) continue
       nextRects.set(id, el.getBoundingClientRect())
     }
 
     if (ready.current && !prefersReducedMotion()) {
-      for (const id of ids) {
+      for (const id of idList) {
         const el = nodes.current.get(id)
         const prev = prevRects.current.get(id)
         const next = nextRects.get(id)
@@ -52,7 +52,7 @@ export function useFlipList(ids: string[]) {
 
     prevRects.current = nextRects
     ready.current = true
-  }, [ids])
+  }, [idsKey])
 
-  return { register, flipEasing: FLIP_EASING }
+  return { register }
 }

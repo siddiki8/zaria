@@ -75,6 +75,9 @@ function NewSetPage() {
             ← Back to dashboard
           </Link>
           <h1 className="mt-4 text-3xl font-bold text-white">Create a set</h1>
+          <p className="mt-2 text-white/60">
+            Start now for instant voting, or schedule a set for later.
+          </p>
 
           <form onSubmit={(event) => void handleSubmit(event)} className="mt-8 space-y-6">
             <div>
@@ -85,16 +88,21 @@ function NewSetPage() {
                 onChange={(event) => setName(event.target.value)}
                 placeholder="Friday Night Heat"
                 required
+                aria-describedby="set-name-hint"
               />
+              <p id="set-name-hint" className="mt-2 text-sm text-white/45">
+                Use a name your guests will recognize.
+              </p>
             </div>
 
-            <div>
-              <Label>Start</Label>
+            <fieldset>
+              <legend className="mb-2 block text-sm font-medium text-white/70">Start</legend>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   type="button"
                   variant={mode === 'asap' ? 'default' : 'secondary'}
                   onClick={() => setMode('asap')}
+                  aria-pressed={mode === 'asap'}
                 >
                   Start ASAP
                 </Button>
@@ -102,11 +110,12 @@ function NewSetPage() {
                   type="button"
                   variant={mode === 'schedule' ? 'default' : 'secondary'}
                   onClick={() => setMode('schedule')}
+                  aria-pressed={mode === 'schedule'}
                 >
                   Schedule
                 </Button>
               </div>
-            </div>
+            </fieldset>
 
             {mode === 'schedule' ? (
               <div>
@@ -117,7 +126,12 @@ function NewSetPage() {
                   value={startAt}
                   onChange={(event) => setStartAt(event.target.value)}
                   required
+                  min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
+                  aria-describedby="start-time-hint"
                 />
+                <p id="start-time-hint" className="mt-2 text-sm text-white/45">
+                  Times are interpreted in the timezone below.
+                </p>
               </div>
             ) : null}
 
@@ -146,9 +160,13 @@ function NewSetPage() {
               </Select>
             </div>
 
-            {error ? <p className="text-sm text-red-400">{error}</p> : null}
+            {error ? (
+              <p className="text-sm text-red-300" role="alert">
+                {error}
+              </p>
+            ) : null}
 
-            <Button type="submit" size="lg" disabled={submitting}>
+            <Button type="submit" size="lg" disabled={submitting} className="w-full sm:w-auto">
               {submitting ? 'Creating...' : 'Create set'}
             </Button>
           </form>

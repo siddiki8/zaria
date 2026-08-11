@@ -17,6 +17,8 @@ export function SetTimer({
   onExtend?: () => void
 }) {
   const [now, setNow] = useState(() => Date.now())
+  const [extending, setExtending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 1000)
@@ -45,34 +47,50 @@ export function SetTimer({
   }
 
   const handleExtend = async () => {
-    await extendSetDuration(set.id, 10)
-    onExtend?.()
+    setExtending(true)
+    setError(null)
+    try {
+      await extendSetDuration(set.id, 10)
+      onExtend?.()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Could not extend the set.')
+    } finally {
+      setExtending(false)
+    }
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
-      <div className="flex items-center gap-3 min-w-0">
-        <Clock className="h-5 w-5 shrink-0 text-[var(--accent)]" />
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.15em] text-white/50">
-            {label}
-          </p>
-          <p className="display-font text-3xl text-white tabular-nums">
-            {displayStatus === 'ended' ? '—' : formatCountdown(seconds)}
-          </p>
+    <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Clock className="h-5 w-5 shrink-0 text-[var(--accent)]" />
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.15em] text-white/50">
+              {label}
+            </p>
+            <p className="display-font text-3xl text-white tabular-nums">
+              {displayStatus === 'ended' ? '—' : formatCountdown(seconds)}
+            </p>
+          </div>
         </div>
+        {displayStatus !== 'ended' ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
+            onClick={() => void handleExtend()}
+            disabled={extending}
+          >
+            <Plus className="h-4 w-4" />
+            {extending ? 'Extending…' : '10 min'}
+          </Button>
+        ) : null}
       </div>
-      {displayStatus !== 'ended' ? (
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="shrink-0"
-          onClick={() => void handleExtend()}
-        >
-          <Plus className="h-4 w-4" />
-          10 min
-        </Button>
+      {error ? (
+        <p className="mt-3 text-sm text-red-300" role="alert">
+          {error}
+        </p>
       ) : null}
     </div>
   )

@@ -34,6 +34,8 @@ function SetDashboardPage() {
   const [qrOpen, setQrOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [songsError, setSongsError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [ending, setEnding] = useState(false)
 
   useEffect(() => subscribeToSet(setId, setDjSet), [setId])
   useEffect(
@@ -74,9 +76,35 @@ function SetDashboardPage() {
   }
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(publicUrl)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(publicUrl)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setActionError('Could not copy the link. Select and copy the URL from the QR code instead.')
+    }
+  }
+
+  const handleEndSet = async () => {
+    if (!window.confirm('End this set? Guests will no longer be able to vote.')) return
+    setEnding(true)
+    setActionError(null)
+    try {
+      await endSet(setId)
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not end this set.')
+    } finally {
+      setEnding(false)
+    }
+  }
+
+  const handleSongAction = async (action: () => Promise<void>) => {
+    setActionError(null)
+    try {
+      await action()
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not update this song.')
+    }
   }
 
   return (
@@ -97,7 +125,7 @@ function SetDashboardPage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" onClick={() => void handleCopy()}>
+                <Button variant="secondary" onClick={() => void handleCopy()}>
                 <Copy className="h-4 w-4" />
                 {copied ? 'Copied!' : 'Copy link'}
               </Button>
@@ -106,27 +134,40 @@ function SetDashboardPage() {
                 QR code
               </Button>
               {!ended ? (
-                <Button variant="danger" onClick={() => void endSet(setId)}>
-                  End set
+                <Button
+                  variant="danger"
+                  onClick={() => void handleEndSet()}
+                  disabled={ending}
+                >
+                  {ending ? 'Ending…' : 'End set'}
                 </Button>
               ) : null}
             </div>
           </div>
+          {actionError ? (
+            <p className="text-sm text-red-300" role="alert">
+              {actionError}
+            </p>
+          ) : null}
 
           <section>
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-[var(--accent)]">
               Live ranking
             </h2>
             {songsError ? (
-              <p className="mb-4 text-sm text-red-400">
+              <p className="mb-4 text-sm text-red-300" role="alert">
                 Could not load songs: {songsError}
               </p>
             ) : null}
             <SongRanking
               songs={activeSongs}
               djView
-              onMarkPlayed={(songId) => void markSongPlayed(setId, songId)}
-              onRemove={(songId) => void removeSong(setId, songId)}
+              onMarkPlayed={(songId) =>
+                void handleSongAction(() => markSongPlayed(setId, songId))
+              }
+              onRemove={(songId) =>
+                void handleSongAction(() => removeSong(setId, songId))
+              }
             />
           </section>
 

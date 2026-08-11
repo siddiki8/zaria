@@ -187,6 +187,8 @@ function VoteButton({
     <button
       type="button"
       disabled={disabled}
+      aria-pressed={voted}
+      aria-label={`${voted ? 'Remove vote for' : 'Vote for'} this song. ${count} ${count === 1 ? 'vote' : 'votes'}.`}
       onClick={() => {
         setPopping(true)
         onClick()

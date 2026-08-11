@@ -38,8 +38,15 @@ function PublicSetPage() {
   const [votedIds, setVotedIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [voteError, setVoteError] = useState<string | null>(null)
   const [, startTransition] = useTransition()
+
+  /** Unconfirmed local vote deltas, layered on top of the latest server songs. */
   const pendingDeltas = useRef(new Map<string, number>())
+  /** Desired voted state until the votes subscription catches up. */
+  const pendingVoted = useRef(new Map<string, boolean>())
+  /** Server voteCount when a pending delta was first opened — clear when it moves. */
+  const pendingBaselines = useRef(new Map<string, number>())
   const serverSongs = useRef<Song[]>([])
 
   useEffect(() => {
@@ -57,16 +64,11 @@ function PublicSetPage() {
       setDjSet(set)
       setLoading(false)
       unsubscribeSongs = subscribeToActiveSongs(set.id, (next) => {
-        // Absorb server updates into pending deltas so optimistic taps don't flicker
-        for (const [songId, delta] of pendingDeltas.current) {
-          const prev = serverSongs.current.find((s) => s.id === songId)
-          const curr = next.find((s) => s.id === songId)
-          if (!curr || !prev) continue
-          const serverDelta = curr.voteCount - prev.voteCount
-          if (serverDelta === 0) continue
-          const remaining = delta - serverDelta
-          if (remaining === 0) pendingDeltas.current.delete(songId)
-          else pendingDeltas.current.set(songId, remaining)
+        for (const [songId, baseline] of pendingBaselines.current) {
+          const curr = next.find((song) => song.id === songId)
+          if (!curr || curr.voteCount === baseline) continue
+          pendingBaselines.current.delete(songId)
+          pendingDeltas.current.delete(songId)
         }
         serverSongs.current = next
         startTransition(() => {
@@ -74,7 +76,15 @@ function PublicSetPage() {
         })
       })
       unsubscribeVotes = subscribeToVotedSongIds(set.id, voterId, (next) => {
-        startTransition(() => setVotedIds(next))
+        for (const [songId, desired] of pendingVoted.current) {
+          if (next.has(songId) === desired) pendingVoted.current.delete(songId)
+        }
+        const merged = new Set(next)
+        for (const [songId, desired] of pendingVoted.current) {
+          if (desired) merged.add(songId)
+          else merged.delete(songId)
+        }
+        startTransition(() => setVotedIds(merged))
       })
     })()
 
@@ -111,13 +121,24 @@ function PublicSetPage() {
   const handleVote = (songId: string) => {
     if (votingDisabled) return
 
+    setVoteError(null)
     const wasVoted = votedIds.has(songId)
     const delta = wasVoted ? -1 : 1
+    const serverCount =
+      serverSongs.current.find((song) => song.id === songId)?.voteCount ?? 0
 
+    if (!pendingBaselines.current.has(songId)) {
+      pendingBaselines.current.set(songId, serverCount)
+    }
     pendingDeltas.current.set(
       songId,
       (pendingDeltas.current.get(songId) ?? 0) + delta,
     )
+    if ((pendingDeltas.current.get(songId) ?? 0) === 0) {
+      pendingDeltas.current.delete(songId)
+      pendingBaselines.current.delete(songId)
+    }
+    pendingVoted.current.set(songId, !wasVoted)
 
     setVotedIds((prev) => {
       const next = new Set(prev)
@@ -128,13 +149,16 @@ function PublicSetPage() {
     setSongs(applyPendingDeltas(serverSongs.current, pendingDeltas.current))
 
     const voterId = getVoterId()
-    void toggleVote(djSet.id, songId, voterId).catch(() => {
+    void toggleVote(djSet.id, songId, voterId).catch((error) => {
       pendingDeltas.current.set(
         songId,
         (pendingDeltas.current.get(songId) ?? 0) - delta,
       )
-      const remaining = pendingDeltas.current.get(songId) ?? 0
-      if (remaining === 0) pendingDeltas.current.delete(songId)
+      if ((pendingDeltas.current.get(songId) ?? 0) === 0) {
+        pendingDeltas.current.delete(songId)
+        pendingBaselines.current.delete(songId)
+      }
+      pendingVoted.current.delete(songId)
 
       setVotedIds((prev) => {
         const next = new Set(prev)
@@ -143,6 +167,11 @@ function PublicSetPage() {
         return next
       })
       setSongs(applyPendingDeltas(serverSongs.current, pendingDeltas.current))
+      setVoteError(
+        error instanceof Error
+          ? error.message
+          : 'Your vote could not be saved. Please try again.',
+      )
     })
   }
 
@@ -162,6 +191,11 @@ function PublicSetPage() {
         {votingDisabled ? (
           <p className="vote-page-enter mb-6 text-center text-sm text-white/50">
             This set has ended. Voting is closed.
+          </p>
+        ) : null}
+        {voteError ? (
+          <p className="vote-page-enter mb-6 rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-3 text-center text-sm text-red-100" role="alert">
+            {voteError}
           </p>
         ) : null}
 
