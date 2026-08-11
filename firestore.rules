@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isDj(setId) {
+      return request.auth != null
+        && request.auth.uid == get(/databases/$(database)/documents/sets/$(setId)).data.djId;
+    }
+
+    function setNotEnded(setId) {
+      return get(/databases/$(database)/documents/sets/$(setId)).data.status != 'ended';
+    }
+
+    function songActive(setId, songId) {
+      return get(/databases/$(database)/documents/sets/$(setId)/songs/$(songId)).data.played == false;
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /sets/{setId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.djId == request.auth.uid;
+      allow update, delete: if isDj(setId);
+
+      match /songs/{songId} {
+        allow read: if true;
+        allow create, delete: if isDj(setId);
+        allow update: if isDj(setId) || (
+          setNotEnded(setId)
+          && songActive(setId, songId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['voteCount'])
+          && (
+            request.resource.data.voteCount == resource.data.voteCount + 1
+            || request.resource.data.voteCount == resource.data.voteCount - 1
+          )
+        );
+
+        match /votes/{voterId} {
+          allow read: if true;
+          allow create: if setNotEnded(setId)
+            && songActive(setId, songId)
+            && request.resource.data.keys().hasOnly(['createdAt']);
+          allow delete: if setNotEnded(setId) && songActive(setId, songId);
+        }
+      }
+    }
+  }
+}
