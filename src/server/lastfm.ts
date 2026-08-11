@@ -38,6 +38,30 @@ function normalizeTracks(tracks: LastFmTrack[] | LastFmTrack | undefined): LastF
   }))
 }
 
+async function fetchDeezerArtwork(artist: string, title: string) {
+  const term = encodeURIComponent(`${artist} ${title}`)
+  try {
+    const response = await fetch(
+      `https://api.deezer.com/search/track?q=${term}&limit=1`,
+    )
+    if (!response.ok) return undefined
+
+    const payload = (await response.json()) as {
+      data?: Array<{
+        album?: {
+          cover_medium?: string
+          cover_big?: string
+          cover_xl?: string
+        }
+      }>
+    }
+    const album = payload.data?.[0]?.album
+    return album?.cover_big || album?.cover_xl || album?.cover_medium || undefined
+  } catch {
+    return undefined
+  }
+}
+
 async function fetchItunesArtwork(artist: string, title: string) {
   const term = encodeURIComponent(`${artist} ${title}`)
   try {
@@ -57,11 +81,18 @@ async function fetchItunesArtwork(artist: string, title: string) {
   }
 }
 
+async function resolveArtwork(artist: string, title: string) {
+  return (
+    (await fetchDeezerArtwork(artist, title)) ||
+    (await fetchItunesArtwork(artist, title))
+  )
+}
+
 async function enrichArtwork(tracks: LastFmTrackResult[]) {
   return Promise.all(
     tracks.map(async (track) => {
       if (track.artworkUrl) return track
-      const artworkUrl = await fetchItunesArtwork(track.artist, track.title)
+      const artworkUrl = await resolveArtwork(track.artist, track.title)
       return artworkUrl ? { ...track, artworkUrl } : track
     }),
   )
