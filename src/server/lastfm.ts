@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import type { LastFmTrackResult } from '@/lib/types'
+import { getFirebaseWebApiKey } from '@/server/firebase-env'
 
 interface LastFmImage {
   '#text': string
@@ -45,10 +46,11 @@ function normalizeTracks(tracks: LastFmTrack[] | LastFmTrack | undefined): LastF
 }
 
 async function assertDjIdToken(idToken: string) {
-  const apiKey =
-    process.env.VITE_FIREBASE_API_KEY ?? process.env.FIREBASE_WEB_API_KEY
+  const apiKey = getFirebaseWebApiKey()
   if (!apiKey) {
-    throw new Error('Firebase API key is not configured')
+    throw new Error(
+      'Firebase API key is not configured on the server. Add FIREBASE_WEB_API_KEY to .dev.vars (same value as VITE_FIREBASE_API_KEY).',
+    )
   }
 
   const response = await fetch(

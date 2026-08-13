@@ -8,7 +8,8 @@ Deploy backend changes **before** shipping the web client that stops writing `vo
 2. **App Check** → register the web app with **reCAPTCHA v3**.
    - Add `VITE_FIREBASE_APP_CHECK_SITE_KEY` to `.env.local`.
    - For local dev, register a debug token and set `VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN`.
-3. After deploy, **enforce** App Check on Firestore (and Cloud Functions if offered).
+3. **Local server env:** add `FIREBASE_WEB_API_KEY` to `.dev.vars` (same value as `VITE_FIREBASE_API_KEY`) so DJ song search can verify Firebase ID tokens.
+4. After deploy, **enforce** App Check on Firestore (and Cloud Functions if offered).
 
 ## Deploy order
 

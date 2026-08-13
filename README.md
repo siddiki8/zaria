@@ -37,12 +37,16 @@ Get an API key from [Last.fm API](https://www.last.fm/api/account/create) and ad
 
 ```
 LASTFM_API_KEY=your_key
+FIREBASE_WEB_API_KEY=your_firebase_web_api_key
 ```
+
+`FIREBASE_WEB_API_KEY` must match `VITE_FIREBASE_API_KEY` from `.env.local` — server functions (song search auth) read it from Wrangler, not from the Vite client env.
 
 For production:
 
 ```bash
 npx wrangler secret put LASTFM_API_KEY
+npx wrangler secret put FIREBASE_WEB_API_KEY
 ```
 
 ### 4. Run locally
