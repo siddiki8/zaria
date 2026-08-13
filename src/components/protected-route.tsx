@@ -6,11 +6,13 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   const navigate = useNavigate()
 
+  const isDj = Boolean(user && !user.isAnonymous)
+
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !isDj) {
       void navigate({ to: '/login' })
     }
-  }, [loading, navigate, user])
+  }, [isDj, loading, navigate])
 
   if (loading) {
     return (
@@ -20,7 +22,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!user) return null
+  if (!isDj) return null
 
   return <>{children}</>
 }

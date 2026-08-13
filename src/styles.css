@@ -9,7 +9,9 @@
 :root {
   --bg: #050505;
   --accent: #abff4f;
-  --purple: #8b5cf6;
+  --accent-hover: #c8ff6a;
+  --accent-foreground: #050505;
+  --secondary: #8b5cf6;
   --surface: #111111;
   --line: rgba(255, 255, 255, 0.08);
 }
@@ -29,14 +31,49 @@ body {
   color: white;
   font-family: var(--font-sans);
   background:
-    radial-gradient(900px 500px at 10% -10%, rgba(139, 92, 246, 0.18), transparent 55%),
-    radial-gradient(700px 420px at 100% 0%, rgba(171, 255, 79, 0.08), transparent 50%),
+    radial-gradient(900px 500px at 10% -10%, color-mix(in srgb, var(--secondary) 18%, transparent), transparent 55%),
+    radial-gradient(700px 420px at 100% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 50%),
     var(--bg);
   -webkit-font-smoothing: antialiased;
 }
 
+.set-theme {
+  min-height: 100%;
+  background:
+    radial-gradient(900px 500px at 10% -10%, color-mix(in srgb, var(--secondary) 18%, transparent), transparent 55%),
+    radial-gradient(700px 420px at 100% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 50%),
+    var(--bg);
+}
+
+.vote-page {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(720px 420px at 8% -8%, color-mix(in srgb, var(--secondary) 38%, transparent), transparent 58%),
+    radial-gradient(640px 380px at 108% 6%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 52%),
+    radial-gradient(500px 360px at 50% 110%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
+    var(--bg);
+}
+
+.vote-page::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, transparent), transparent 28%),
+    repeating-linear-gradient(
+      -12deg,
+      color-mix(in srgb, var(--accent) 4%, transparent) 0 1px,
+      transparent 1px 18px
+    );
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 42%);
+  content: "";
+  pointer-events: none;
+}
+
 ::selection {
-  background: rgba(171, 255, 79, 0.32);
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
   color: white;
 }
 
@@ -87,16 +124,21 @@ select {
 }
 
 .rank-item-inner {
+  --art-vibrant: var(--accent);
+  --art-muted: var(--secondary);
+  --art-dark: #111111;
+  overflow: hidden;
   transition:
     border-color 280ms ease,
-    background-color 280ms ease,
-    box-shadow 280ms ease;
+    box-shadow 280ms ease,
+    transform 280ms ease;
 }
 
 .rank-item-inner:hover {
-  border-color: rgba(255, 255, 255, 0.14);
-  background-color: rgba(255, 255, 255, 0.045);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+  border-color: color-mix(in srgb, var(--art-vibrant) 45%, rgba(255, 255, 255, 0.14));
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.32),
+    0 0 28px color-mix(in srgb, var(--art-vibrant) 18%, transparent);
 }
 
 .rank-flash-up {
@@ -121,7 +163,7 @@ select {
 }
 
 .vote-btn--on {
-  box-shadow: 0 0 22px rgba(171, 255, 79, 0.35);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .vote-btn--pop {
@@ -157,16 +199,16 @@ select {
 
 @keyframes rank-glow-up {
   0% {
-    border-color: rgba(171, 255, 79, 0.45);
-    box-shadow: 0 0 0 rgba(171, 255, 79, 0);
+    border-color: color-mix(in srgb, var(--art-vibrant) 45%, transparent);
+    box-shadow: 0 0 0 color-mix(in srgb, var(--art-vibrant) 0%, transparent);
   }
   40% {
-    border-color: rgba(171, 255, 79, 0.55);
-    box-shadow: 0 0 28px rgba(171, 255, 79, 0.22);
+    border-color: color-mix(in srgb, var(--art-vibrant) 55%, transparent);
+    box-shadow: 0 0 28px color-mix(in srgb, var(--art-vibrant) 22%, transparent);
   }
   100% {
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 0 0 rgba(171, 255, 79, 0);
+    border-color: color-mix(in srgb, var(--art-vibrant) 28%, rgba(255, 255, 255, 0.08));
+    box-shadow: 0 0 18px color-mix(in srgb, var(--art-vibrant) 10%, transparent);
   }
 }
 
@@ -248,9 +290,9 @@ select {
 }
 
 .glow-green {
-  box-shadow: 0 0 40px rgba(171, 255, 79, 0.15);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
 .glow-purple {
-  box-shadow: 0 0 40px rgba(139, 92, 246, 0.12);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--secondary) 12%, transparent);
 }

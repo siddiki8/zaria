@@ -16,6 +16,12 @@ interface LastFmTrack {
 /** Last.fm placeholder "white star" asset — treat as missing art. */
 const LASTFM_PLACEHOLDER = '2a96cbd8b46e442fc41c2b86b821562f'
 
+const SEARCH_CACHE_TTL_MS = 60_000
+const searchCache = new Map<
+  string,
+  { tracks: LastFmTrackResult[]; expiresAt: number }
+>()
+
 function pickArtwork(images?: LastFmImage[]) {
   if (!images?.length) return undefined
   const preferred = ['extralarge', 'large', 'medium', 'small']
@@ -36,6 +42,45 @@ function normalizeTracks(tracks: LastFmTrack[] | LastFmTrack | undefined): LastF
     artworkUrl: pickArtwork(track.image),
     lastfmUrl: track.url,
   }))
+}
+
+async function assertDjIdToken(idToken: string) {
+  const apiKey =
+    process.env.VITE_FIREBASE_API_KEY ?? process.env.FIREBASE_WEB_API_KEY
+  if (!apiKey) {
+    throw new Error('Firebase API key is not configured')
+  }
+
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error('DJ sign-in required')
+  }
+
+  const payload = (await response.json()) as {
+    users?: Array<{
+      providerUserInfo?: Array<{ providerId?: string }>
+    }>
+  }
+
+  const user = payload.users?.[0]
+  if (!user) throw new Error('DJ sign-in required')
+
+  const providers = user.providerUserInfo ?? []
+  const isAnonymous =
+    providers.length === 0 ||
+    providers.every((provider) => provider.providerId === 'anonymous')
+
+  if (isAnonymous) {
+    throw new Error('DJ sign-in required')
+  }
 }
 
 async function fetchDeezerArtwork(artist: string, title: string) {
@@ -99,8 +144,10 @@ async function enrichArtwork(tracks: LastFmTrackResult[]) {
 }
 
 export const searchTracks = createServerFn({ method: 'POST' })
-  .validator((data: { q: string }) => data)
+  .validator((data: { q: string; idToken: string }) => data)
   .handler(async ({ data }) => {
+    await assertDjIdToken(data.idToken)
+
     const apiKey = process.env.LASTFM_API_KEY
     if (!apiKey) {
       throw new Error('LASTFM_API_KEY is not configured')
@@ -108,6 +155,12 @@ export const searchTracks = createServerFn({ method: 'POST' })
 
     const query = data.q.trim()
     if (!query) return []
+
+    const cacheKey = query.toLowerCase()
+    const cached = searchCache.get(cacheKey)
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.tracks
+    }
 
     const params = new URLSearchParams({
       method: 'track.search',
@@ -133,6 +186,14 @@ export const searchTracks = createServerFn({ method: 'POST' })
       }
     }
 
-    const tracks = normalizeTracks(payload.results?.trackmatches?.track)
-    return enrichArtwork(tracks)
+    const tracks = await enrichArtwork(
+      normalizeTracks(payload.results?.trackmatches?.track),
+    )
+
+    searchCache.set(cacheKey, {
+      tracks,
+      expiresAt: Date.now() + SEARCH_CACHE_TTL_MS,
+    })
+
+    return tracks
   })

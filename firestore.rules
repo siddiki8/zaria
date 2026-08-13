@@ -6,12 +6,18 @@ service cloud.firestore {
         && request.auth.uid == get(/databases/$(database)/documents/sets/$(setId)).data.djId;
     }
 
-    function setNotEnded(setId) {
-      return get(/databases/$(database)/documents/sets/$(setId)).data.status != 'ended';
+    function setDoc(setId) {
+      return get(/databases/$(database)/documents/sets/$(setId)).data;
     }
 
-    function songActive(setId, songId) {
-      return get(/databases/$(database)/documents/sets/$(setId)/songs/$(songId)).data.played == false;
+    function setNotEnded(setId) {
+      let set = setDoc(setId);
+      return set.status != 'ended'
+        && request.time < set.startAt + duration(set.durationMinutes, 'm');
+    }
+
+    function validBallotSongIds(songIds) {
+      return songIds is list && songIds.size() <= 50;
     }
 
     match /users/{userId} {
@@ -19,30 +25,45 @@ service cloud.firestore {
       allow create, update: if request.auth != null && request.auth.uid == userId;
     }
 
+    match /djSlugs/{djSlug} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+    }
+
     match /sets/{setId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.djId == request.auth.uid;
       allow update, delete: if isDj(setId);
 
+      match /ballots/{uid} {
+        allow read: if request.auth != null
+          && (request.auth.uid == uid || isDj(setId));
+        allow create, update: if request.auth != null
+          && request.auth.uid == uid
+          && setNotEnded(setId)
+          && request.resource.data.keys().hasOnly(['songIds'])
+          && validBallotSongIds(request.resource.data.songIds);
+        allow delete: if request.auth != null
+          && request.auth.uid == uid
+          && setNotEnded(setId);
+      }
+
       match /songs/{songId} {
         allow read: if true;
-        allow create, delete: if isDj(setId);
-        allow update: if isDj(setId) || (
-          setNotEnded(setId)
-          && songActive(setId, songId)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['voteCount'])
-          && (
-            request.resource.data.voteCount == resource.data.voteCount + 1
-            || request.resource.data.voteCount == resource.data.voteCount - 1
-          )
-        );
+        allow create, update, delete: if isDj(setId);
+
+        match /shards/{shardId} {
+          allow read, write: if false;
+        }
 
         match /votes/{voterId} {
-          allow read: if true;
-          allow create: if setNotEnded(setId)
-            && songActive(setId, songId)
-            && request.resource.data.keys().hasOnly(['createdAt']);
-          allow delete: if setNotEnded(setId) && songActive(setId, songId);
+          allow read, write: if false;
         }
       }
     }

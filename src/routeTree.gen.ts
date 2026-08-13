@@ -12,9 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SSlugRouteImport } from './routes/s/$slug'
-import { Route as SetsSetIdRouteImport } from './routes/sets/$setId'
+import { Route as SetsSetIdRouteRouteImport } from './routes/sets/$setId/route'
 import { Route as SetsNewRouteImport } from './routes/sets/new'
+import { Route as SDjSlugSetSlugRouteImport } from './routes/s/$djSlug/$setSlug'
+import { Route as SetsSetIdIndexRouteImport } from './routes/sets/$setId/index'
+import { Route as SetsSetIdSettingsRouteImport } from './routes/sets/$setId/settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -31,12 +35,17 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SSlugRoute = SSlugRouteImport.update({
   id: '/s/$slug',
   path: '/s/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SetsSetIdRoute = SetsSetIdRouteImport.update({
+const SetsSetIdRouteRoute = SetsSetIdRouteRouteImport.update({
   id: '/sets/$setId',
   path: '/sets/$setId',
   getParentRoute: () => rootRouteImport,
@@ -46,55 +55,105 @@ const SetsNewRoute = SetsNewRouteImport.update({
   path: '/sets/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SDjSlugSetSlugRoute = SDjSlugSetSlugRouteImport.update({
+  id: '/s/$djSlug/$setSlug',
+  path: '/s/$djSlug/$setSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetsSetIdIndexRoute = SetsSetIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SetsSetIdRouteRoute,
+} as any)
+const SetsSetIdSettingsRoute = SetsSetIdSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => SetsSetIdRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
+  '/sets/$setId': typeof SetsSetIdRouteRouteWithChildren
   '/s/$slug': typeof SSlugRoute
-  '/sets/$setId': typeof SetsSetIdRoute
   '/sets/new': typeof SetsNewRoute
+  '/s/$djSlug/$setSlug': typeof SDjSlugSetSlugRoute
+  '/sets/$setId/settings': typeof SetsSetIdSettingsRoute
+  '/sets/$setId/': typeof SetsSetIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
   '/s/$slug': typeof SSlugRoute
-  '/sets/$setId': typeof SetsSetIdRoute
   '/sets/new': typeof SetsNewRoute
+  '/s/$djSlug/$setSlug': typeof SDjSlugSetSlugRoute
+  '/sets/$setId/settings': typeof SetsSetIdSettingsRoute
+  '/sets/$setId': typeof SetsSetIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/settings': typeof SettingsRoute
+  '/sets/$setId': typeof SetsSetIdRouteRouteWithChildren
   '/s/$slug': typeof SSlugRoute
-  '/sets/$setId': typeof SetsSetIdRoute
   '/sets/new': typeof SetsNewRoute
+  '/s/$djSlug/$setSlug': typeof SDjSlugSetSlugRoute
+  '/sets/$setId/settings': typeof SetsSetIdSettingsRoute
+  '/sets/$setId/': typeof SetsSetIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/dashboard' | '/login' | '/s/$slug' | '/sets/$setId' | '/sets/new'
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/settings'
+    | '/sets/$setId'
+    | '/s/$slug'
+    | '/sets/new'
+    | '/s/$djSlug/$setSlug'
+    | '/sets/$setId/settings'
+    | '/sets/$setId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login' | '/s/$slug' | '/sets/$setId' | '/sets/new'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/settings'
+    | '/s/$slug'
+    | '/sets/new'
+    | '/s/$djSlug/$setSlug'
+    | '/sets/$setId/settings'
+    | '/sets/$setId'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/login'
-    | '/s/$slug'
+    | '/settings'
     | '/sets/$setId'
+    | '/s/$slug'
     | '/sets/new'
+    | '/s/$djSlug/$setSlug'
+    | '/sets/$setId/settings'
+    | '/sets/$setId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
+  SettingsRoute: typeof SettingsRoute
+  SetsSetIdRouteRoute: typeof SetsSetIdRouteRouteWithChildren
   SSlugRoute: typeof SSlugRoute
-  SetsSetIdRoute: typeof SetsSetIdRoute
   SetsNewRoute: typeof SetsNewRoute
+  SDjSlugSetSlugRoute: typeof SDjSlugSetSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -120,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/s/$slug': {
       id: '/s/$slug'
       path: '/s/$slug'
@@ -131,7 +197,7 @@ declare module '@tanstack/react-router' {
       id: '/sets/$setId'
       path: '/sets/$setId'
       fullPath: '/sets/$setId'
-      preLoaderRoute: typeof SetsSetIdRouteImport
+      preLoaderRoute: typeof SetsSetIdRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sets/new': {
@@ -141,16 +207,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SetsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/s/$djSlug/$setSlug': {
+      id: '/s/$djSlug/$setSlug'
+      path: '/s/$djSlug/$setSlug'
+      fullPath: '/s/$djSlug/$setSlug'
+      preLoaderRoute: typeof SDjSlugSetSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sets/$setId/': {
+      id: '/sets/$setId/'
+      path: '/'
+      fullPath: '/sets/$setId/'
+      preLoaderRoute: typeof SetsSetIdIndexRouteImport
+      parentRoute: typeof SetsSetIdRouteRoute
+    }
+    '/sets/$setId/settings': {
+      id: '/sets/$setId/settings'
+      path: '/settings'
+      fullPath: '/sets/$setId/settings'
+      preLoaderRoute: typeof SetsSetIdSettingsRouteImport
+      parentRoute: typeof SetsSetIdRouteRoute
+    }
   }
 }
+
+interface SetsSetIdRouteRouteChildren {
+  SetsSetIdSettingsRoute: typeof SetsSetIdSettingsRoute
+  SetsSetIdIndexRoute: typeof SetsSetIdIndexRoute
+}
+
+const SetsSetIdRouteRouteChildren: SetsSetIdRouteRouteChildren = {
+  SetsSetIdSettingsRoute: SetsSetIdSettingsRoute,
+  SetsSetIdIndexRoute: SetsSetIdIndexRoute,
+}
+
+const SetsSetIdRouteRouteWithChildren = SetsSetIdRouteRoute._addFileChildren(
+  SetsSetIdRouteRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
+  SettingsRoute: SettingsRoute,
+  SetsSetIdRouteRoute: SetsSetIdRouteRouteWithChildren,
   SSlugRoute: SSlugRoute,
-  SetsSetIdRoute: SetsSetIdRoute,
   SetsNewRoute: SetsNewRoute,
+  SDjSlugSetSlugRoute: SDjSlugSetSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

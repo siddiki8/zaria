@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Clock, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { extendSetDuration } from '@/lib/sets'
+import { endSet, extendSetDuration } from '@/lib/sets'
 import {
   formatCountdown,
   getSetDisplayStatus,
@@ -25,6 +25,20 @@ export function SetTimer({
     return () => window.clearInterval(interval)
   }, [])
 
+  // Persist expiry so Firestore status matches the timer (voting rules also check duration).
+  useEffect(() => {
+    if (set.status === 'ended') return
+    const remainingMs = getSetEndTime(set).getTime() - Date.now()
+    if (remainingMs <= 0) {
+      void endSet(set.id)
+      return
+    }
+    const timeout = window.setTimeout(() => {
+      void endSet(set.id)
+    }, remainingMs)
+    return () => window.clearTimeout(timeout)
+  }, [set.id, set.status, set.startAt, set.durationMinutes])
+
   const displayStatus = getSetDisplayStatus(set)
   const endTime = getSetEndTime(set)
   const startMs = set.startAt.getTime()
@@ -41,7 +55,7 @@ export function SetTimer({
   } else {
     seconds = Math.ceil((endMs - now) / 1000)
     if (seconds <= 0) {
-      label = 'Time left'
+      label = 'Set ended'
       seconds = 0
     }
   }

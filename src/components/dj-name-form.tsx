@@ -7,10 +7,12 @@ export function DjNameForm({
   djName,
   onSave,
   disabled,
+  showSlugWarning,
 }: {
   djName: string
   onSave: (djName: string) => Promise<void>
   disabled?: boolean
+  showSlugWarning?: boolean
 }) {
   const [value, setValue] = useState(djName)
   const [saving, setSaving] = useState(false)
@@ -66,6 +68,13 @@ export function DjNameForm({
       <p className="mb-3 text-sm text-white/50">
         This is what fans see on your voting page — not your Google account name.
       </p>
+
+      {showSlugWarning ? (
+        <p className="mb-3 text-sm text-white/45">
+          Changing your DJ name may update your public URL path. Old QR codes and
+          links that use the previous path will stop working.
+        </p>
+      ) : null}
 
       {djName.trim() ? (
         <p className="mb-3 text-sm text-white/70">

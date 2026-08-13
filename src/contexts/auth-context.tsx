@@ -12,7 +12,7 @@ import {
   type User,
 } from 'firebase/auth'
 import { getAuthClient, googleProvider, isFirebaseConfigured } from '@/lib/firebase'
-import { ensureUserProfile, subscribeToUserProfile, updateDjName } from '@/lib/users'
+import { ensureUserProfile, subscribeToUserProfile, saveDjProfile } from '@/lib/users'
 import type { UserProfile } from '@/lib/types'
 
 interface AuthContextValue {
@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return onAuthStateChanged(getAuthClient(), async (nextUser) => {
-      if (nextUser) {
+      if (nextUser && !nextUser.isAnonymous) {
         await createProfileIfNeeded(nextUser)
       }
       setUser(nextUser)
@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const saveDjName = async (djName: string) => {
     if (!user) return
-    await updateDjName(user.uid, djName)
+    await saveDjProfile(user.uid, djName)
   }
 
   return (

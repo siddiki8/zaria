@@ -4,12 +4,16 @@ export interface DjSet {
   id: string
   djId: string
   djName: string
+  djSlug?: string
   name: string
+  setSlug?: string
   slug: string
   status: SetStatus
   startAt: Date
   timezone: string
   durationMinutes: number
+  primaryColor: string
+  secondaryColor: string
   createdAt: Date
   endedAt?: Date
 }
@@ -36,6 +40,7 @@ export interface LastFmTrackResult {
 export interface UserProfile {
   id: string
   djName: string
+  djSlug?: string
   displayName?: string
   photoURL?: string
   createdAt: Date

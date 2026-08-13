@@ -3,6 +3,7 @@ import { Check, Plus, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input, Label } from '@/components/ui/input'
 import { searchTracks } from '@/server/lastfm'
+import { getAuthClient } from '@/lib/firebase'
 import type { LastFmTrackResult } from '@/lib/types'
 
 const SEARCH_DEBOUNCE_MS = 350
@@ -54,7 +55,16 @@ export function SongSearch({
     const timer = window.setTimeout(() => {
       void (async () => {
         try {
-          const tracks = await searchTracks({ data: { q: trimmed } })
+          const user = getAuthClient().currentUser
+          if (!user || user.isAnonymous) {
+            if (id !== requestId.current) return
+            setError('Sign in as a DJ to search tracks.')
+            setResults([])
+            return
+          }
+
+          const idToken = await user.getIdToken()
+          const tracks = await searchTracks({ data: { q: trimmed, idToken } })
           if (id !== requestId.current) return
           setResults(tracks)
         } catch (err) {

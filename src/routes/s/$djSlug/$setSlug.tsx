@@ -1,29 +1,20 @@
-import { createFileRoute, notFound, redirect } from '@tanstack/react-router'
+import { createFileRoute, notFound } from '@tanstack/react-router'
 import { PublicVotingPage } from '@/components/public-voting-page'
 import { buildSetPageHead } from '@/lib/set-meta'
-import { getSetBySlug } from '@/lib/sets'
+import { getSetByPublicPath } from '@/lib/sets'
 
-export const Route = createFileRoute('/s/$slug')({
+export const Route = createFileRoute('/s/$djSlug/$setSlug')({
   ssr: false,
   loader: async ({ params }) => {
-    const set = await getSetBySlug(params.slug)
+    const set = await getSetByPublicPath(params.djSlug, params.setSlug)
     if (!set) throw notFound()
-
-    if (set.djSlug && set.setSlug) {
-      throw redirect({
-        to: '/s/$djSlug/$setSlug',
-        params: { djSlug: set.djSlug, setSlug: set.setSlug },
-        replace: true,
-      })
-    }
-
     return { set }
   },
   head: ({ loaderData }) => {
     if (!loaderData?.set) return { meta: [{ title: 'What Should Play?' }] }
     return buildSetPageHead(loaderData.set)
   },
-  component: LegacyPublicSetPage,
+  component: PublicSetByPathPage,
   notFoundComponent: () => (
     <main className="flex min-h-screen items-center justify-center text-white/60">
       Set not found.
@@ -31,7 +22,7 @@ export const Route = createFileRoute('/s/$slug')({
   ),
 })
 
-function LegacyPublicSetPage() {
+function PublicSetByPathPage() {
   const { set } = Route.useLoaderData()
   return <PublicVotingPage initialSet={set} />
 }

@@ -9,6 +9,14 @@
       ]
     },
     {
+      "collectionGroup": "sets",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "djSlug", "order": "ASCENDING" },
+        { "fieldPath": "setSlug", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "songs",
       "queryScope": "COLLECTION",
       "fields": [

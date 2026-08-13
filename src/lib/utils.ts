@@ -5,11 +5,23 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function getPublicSetUrl(slug: string) {
-  if (typeof window !== 'undefined') {
-    return `${window.location.origin}/s/${slug}`
+export function getPublicSetPath(
+  set: Pick<{ slug: string; djSlug?: string; setSlug?: string }, 'slug' | 'djSlug' | 'setSlug'>,
+) {
+  if (set.djSlug && set.setSlug) {
+    return `/s/${set.djSlug}/${set.setSlug}`
   }
-  return `/s/${slug}`
+  return `/s/${set.slug}`
+}
+
+export function getPublicSetUrl(
+  set: Pick<{ slug: string; djSlug?: string; setSlug?: string }, 'slug' | 'djSlug' | 'setSlug'>,
+) {
+  const path = getPublicSetPath(set)
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}${path}`
+  }
+  return path
 }
 
 export function formatSetTime(date: Date, timezone: string) {
@@ -20,17 +32,20 @@ export function formatSetTime(date: Date, timezone: string) {
   }).format(date)
 }
 
+export function getSetEndTime(set: { startAt: Date; durationMinutes: number }) {
+  return new Date(set.startAt.getTime() + set.durationMinutes * 60 * 1000)
+}
+
 export function getSetDisplayStatus(set: {
   status: string
   startAt: Date
+  durationMinutes: number
 }) {
   if (set.status === 'ended') return 'ended' as const
-  if (set.status === 'live' || set.startAt <= new Date()) return 'live' as const
+  const now = new Date()
+  if (now >= getSetEndTime(set)) return 'ended' as const
+  if (set.status === 'live' || set.startAt <= now) return 'live' as const
   return 'scheduled' as const
-}
-
-export function getSetEndTime(set: { startAt: Date; durationMinutes: number }) {
-  return new Date(set.startAt.getTime() + set.durationMinutes * 60 * 1000)
 }
 
 export function formatCountdown(totalSeconds: number) {

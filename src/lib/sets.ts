@@ -1,4 +1,5 @@
 import {
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -13,10 +14,16 @@ import {
   setDoc,
   Timestamp,
   updateDoc,
+  writeBatch,
   where,
   type DocumentData,
 } from 'firebase/firestore'
-import { getDb } from './firebase'
+import { getDb, isFirebaseClient } from './firebase'
+import {
+  DEFAULT_PRIMARY_COLOR,
+  DEFAULT_SECONDARY_COLOR,
+} from './set-theme'
+import { nextAvailableSlug, slugify } from './slug'
 import type { DjSet, Song } from './types'
 
 function mapSet(id: string, data: DocumentData): DjSet {
@@ -24,12 +31,16 @@ function mapSet(id: string, data: DocumentData): DjSet {
     id,
     djId: data.djId,
     djName: data.djName,
+    djSlug: typeof data.djSlug === 'string' ? data.djSlug : undefined,
     name: data.name,
+    setSlug: typeof data.setSlug === 'string' ? data.setSlug : undefined,
     slug: data.slug,
     status: data.status,
     startAt: (data.startAt as Timestamp).toDate(),
     timezone: data.timezone,
     durationMinutes: data.durationMinutes,
+    primaryColor: data.primaryColor ?? DEFAULT_PRIMARY_COLOR,
+    secondaryColor: data.secondaryColor ?? DEFAULT_SECONDARY_COLOR,
     createdAt: (data.createdAt as Timestamp).toDate(),
     endedAt: data.endedAt ? (data.endedAt as Timestamp).toDate() : undefined,
   }
@@ -58,13 +69,90 @@ export async function getSetBySlug(slug: string) {
   return mapSet(docSnap.id, docSnap.data())
 }
 
+export async function getSetByPublicPath(djSlug: string, setSlug: string) {
+  const setsRef = collection(getDb(), 'sets')
+  const q = query(
+    setsRef,
+    where('djSlug', '==', djSlug),
+    where('setSlug', '==', setSlug),
+  )
+  const snapshot = await getDocs(q)
+  if (snapshot.empty) return null
+  const docSnap = snapshot.docs[0]!
+  return mapSet(docSnap.id, docSnap.data())
+}
+
+export async function allocateSetSlug(djId: string, setName: string) {
+  const userSnap = await getDoc(doc(getDb(), 'users', djId))
+  const taken = new Set<string>()
+  if (userSnap.exists()) {
+    const setSlugs = userSnap.data().setSlugs
+    if (Array.isArray(setSlugs)) {
+      for (const slug of setSlugs) {
+        if (typeof slug === 'string') taken.add(slug)
+      }
+    }
+  }
+  return nextAvailableSlug(setName, taken)
+}
+
+export async function backfillSetSlugsForDj(
+  djId: string,
+  djSlug: string,
+  djName: string,
+) {
+  const setsSnap = await getDocs(
+    query(collection(getDb(), 'sets'), where('djId', '==', djId)),
+  )
+  const taken = new Set<string>()
+  for (const docSnap of setsSnap.docs) {
+    const setSlug = docSnap.data().setSlug
+    if (typeof setSlug === 'string') taken.add(setSlug)
+  }
+
+  const batch = writeBatch(getDb())
+  let pending = 0
+
+  for (const docSnap of setsSnap.docs) {
+    const data = docSnap.data()
+    const needsDjSlug = data.djSlug !== djSlug || data.djName !== djName
+    const needsSetSlug = typeof data.setSlug !== 'string'
+    if (!needsDjSlug && !needsSetSlug) continue
+
+    const setSlug =
+      typeof data.setSlug === 'string'
+        ? data.setSlug
+        : nextAvailableSlug(data.name ?? slugify('set'), taken)
+
+    if (!taken.has(setSlug)) taken.add(setSlug)
+
+    batch.update(docSnap.ref, {
+      djSlug,
+      djName,
+      setSlug,
+    })
+    pending += 1
+  }
+
+  if (pending > 0) await batch.commit()
+
+  const allSlugs = [...taken]
+  if (allSlugs.length > 0) {
+    await updateDoc(doc(getDb(), 'users', djId), { setSlugs: allSlugs })
+  }
+}
+
 export async function getSetById(setId: string) {
   const docSnap = await getDoc(doc(getDb(), 'sets', setId))
   if (!docSnap.exists()) return null
   return mapSet(docSnap.id, docSnap.data())
 }
 
+function noopUnsubscribe() {}
+
 export function subscribeToSet(setId: string, callback: (set: DjSet | null) => void) {
+  if (!isFirebaseClient()) return noopUnsubscribe
+
   return onSnapshot(doc(getDb(), 'sets', setId), (docSnap) => {
     if (!docSnap.exists()) {
       callback(null)
@@ -75,6 +163,8 @@ export function subscribeToSet(setId: string, callback: (set: DjSet | null) => v
 }
 
 export function subscribeToDjSets(djId: string, callback: (sets: DjSet[]) => void) {
+  if (!isFirebaseClient()) return noopUnsubscribe
+
   const q = query(
     collection(getDb(), 'sets'),
     where('djId', '==', djId),
@@ -90,6 +180,8 @@ export function subscribeToActiveSongs(
   callback: (songs: Song[]) => void,
   onError?: (error: Error) => void,
 ) {
+  if (!isFirebaseClient()) return noopUnsubscribe
+
   const q = query(
     collection(getDb(), 'sets', setId, 'songs'),
     where('played', '==', false),
@@ -110,6 +202,8 @@ export function subscribeToPlayedSongs(
   callback: (songs: Song[]) => void,
   onError?: (error: Error) => void,
 ) {
+  if (!isFirebaseClient()) return noopUnsubscribe
+
   const q = query(
     collection(getDb(), 'sets', setId, 'songs'),
     where('played', '==', true),
@@ -132,26 +226,48 @@ export function subscribeToPlayedSongs(
 export async function createSet(input: {
   djId: string
   djName: string
+  djSlug: string
   name: string
   slug: string
+  setSlug: string
   status: DjSet['status']
   startAt: Date
   timezone: string
   durationMinutes: number
+  primaryColor?: string
+  secondaryColor?: string
 }) {
   const setRef = doc(collection(getDb(), 'sets'))
   await setDoc(setRef, {
     djId: input.djId,
     djName: input.djName,
+    djSlug: input.djSlug,
     name: input.name,
     slug: input.slug,
+    setSlug: input.setSlug,
     status: input.status,
     startAt: Timestamp.fromDate(input.startAt),
     timezone: input.timezone,
     durationMinutes: input.durationMinutes,
+    primaryColor: input.primaryColor ?? DEFAULT_PRIMARY_COLOR,
+    secondaryColor: input.secondaryColor ?? DEFAULT_SECONDARY_COLOR,
     createdAt: serverTimestamp(),
   })
+
+  await updateDoc(doc(getDb(), 'users', input.djId), {
+    setSlugs: arrayUnion(input.setSlug),
+  })
+
   return setRef.id
+}
+
+export async function updateSet(
+  setId: string,
+  patch: Partial<
+    Pick<DjSet, 'name' | 'primaryColor' | 'secondaryColor'>
+  >,
+) {
+  await updateDoc(doc(getDb(), 'sets', setId), patch)
 }
 
 export async function endSet(setId: string) {
@@ -200,60 +316,54 @@ export async function markSongPlayed(setId: string, songId: string) {
   })
 }
 
-export async function getVotedSongIds(setId: string, voterId: string) {
-  const songsSnapshot = await getDocs(collection(getDb(), 'sets', setId, 'songs'))
-  const voted = new Set<string>()
-
-  await Promise.all(
-    songsSnapshot.docs.map(async (songDoc) => {
-      const voteDoc = await getDoc(
-        doc(getDb(), 'sets', setId, 'songs', songDoc.id, 'votes', voterId),
-      )
-      if (voteDoc.exists()) voted.add(songDoc.id)
-    }),
-  )
-
-  return voted
-}
-
-export function subscribeToVotedSongIds(
+export function subscribeToBallot(
   setId: string,
-  voterId: string,
+  uid: string,
   callback: (votedIds: Set<string>) => void,
 ) {
-  const songsRef = collection(getDb(), 'sets', setId, 'songs')
-  return onSnapshot(songsRef, async (snapshot) => {
-    const voted = new Set<string>()
-    await Promise.all(
-      snapshot.docs.map(async (songDoc) => {
-        const voteDoc = await getDoc(
-          doc(getDb(), 'sets', setId, 'songs', songDoc.id, 'votes', voterId),
-        )
-        if (voteDoc.exists()) voted.add(songDoc.id)
-      }),
+  if (!isFirebaseClient()) return noopUnsubscribe
+
+  return onSnapshot(doc(getDb(), 'sets', setId, 'ballots', uid), (snap) => {
+    if (!snap.exists()) {
+      callback(new Set())
+      return
+    }
+    const songIds = snap.data().songIds
+    callback(
+      new Set(
+        Array.isArray(songIds)
+          ? songIds.filter((id): id is string => typeof id === 'string')
+          : [],
+      ),
     )
-    callback(voted)
   })
 }
 
-export async function toggleVote(setId: string, songId: string, voterId: string) {
-  const songRef = doc(getDb(), 'sets', setId, 'songs', songId)
-  const voteRef = doc(getDb(), 'sets', setId, 'songs', songId, 'votes', voterId)
+export async function toggleVote(setId: string, songId: string, uid: string) {
+  const ballotRef = doc(getDb(), 'sets', setId, 'ballots', uid)
 
   await runTransaction(getDb(), async (transaction) => {
-    const voteSnap = await transaction.get(voteRef)
-    const songSnap = await transaction.get(songRef)
+    const ballotSnap = await transaction.get(ballotRef)
+    const currentIds: string[] = ballotSnap.exists()
+      ? (ballotSnap.data().songIds ?? []).filter(
+          (id: unknown): id is string => typeof id === 'string',
+        )
+      : []
 
-    if (!songSnap.exists()) {
-      throw new Error('Song not found')
+    const hasVote = currentIds.includes(songId)
+    const nextIds = hasVote
+      ? currentIds.filter((id) => id !== songId)
+      : [...currentIds, songId]
+
+    if (nextIds.length > 50) {
+      throw new Error('You can vote for at most 50 songs at once.')
     }
 
-    if (voteSnap.exists()) {
-      transaction.delete(voteRef)
-      transaction.update(songRef, { voteCount: increment(-1) })
-    } else {
-      transaction.set(voteRef, { createdAt: serverTimestamp() })
-      transaction.update(songRef, { voteCount: increment(1) })
+    if (nextIds.length === 0) {
+      if (ballotSnap.exists()) transaction.delete(ballotRef)
+      return
     }
+
+    transaction.set(ballotRef, { songIds: nextIds })
   })
 }
