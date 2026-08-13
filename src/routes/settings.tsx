@@ -3,7 +3,6 @@ import { DjNameForm } from '@/components/dj-name-form'
 import { ProtectedRoute } from '@/components/protected-route'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
-import { slugify } from '@/lib/slug'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage,
@@ -11,8 +10,6 @@ export const Route = createFileRoute('/settings')({
 
 function SettingsPage() {
   const { profile, logout, saveDjName } = useAuth()
-  const djSlug = profile?.djSlug
-  const previewSlug = djSlug ?? (profile?.djName.trim() ? slugify(profile.djName) : null)
 
   return (
     <ProtectedRoute>
@@ -38,23 +35,11 @@ function SettingsPage() {
 
           <DjNameForm
             djName={profile?.djName ?? ''}
+            savedSlug={profile?.djSlug}
             onSave={saveDjName}
             disabled={!profile}
             showSlugWarning
           />
-
-          {previewSlug ? (
-            <p className="mt-4 text-sm text-white/50">
-              Your public voting URLs start with{' '}
-              <span className="font-mono text-white/70">/s/{previewSlug}/</span>
-              {djSlug ? null : (
-                <span className="text-white/40">
-                  {' '}
-                  (preview — save to confirm)
-                </span>
-              )}
-            </p>
-          ) : null}
         </div>
       </main>
     </ProtectedRoute>

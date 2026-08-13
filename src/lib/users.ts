@@ -91,28 +91,36 @@ export async function saveDjProfile(uid: string, djName: string) {
       : undefined
 
   const djSlug = await allocateDjSlug(trimmed, uid)
+  const slugRef = doc(getDb(), 'djSlugs', djSlug)
+  const oldSlugRef =
+    previousDjSlug && previousDjSlug !== djSlug
+      ? doc(getDb(), 'djSlugs', previousDjSlug)
+      : null
 
   await runTransaction(getDb(), async (transaction) => {
-    const slugRef = doc(getDb(), 'djSlugs', djSlug)
+    const userInTx = await transaction.get(userRef)
     const slugSnap = await transaction.get(slugRef)
+    const oldSnap = oldSlugRef ? await transaction.get(oldSlugRef) : null
 
-    const oldRef =
-      previousDjSlug && previousDjSlug !== djSlug
-        ? doc(getDb(), 'djSlugs', previousDjSlug)
-        : null
-    const oldSnap = oldRef ? await transaction.get(oldRef) : null
-
-    if (slugSnap.exists() && slugSnap.data().uid !== uid) {
+    if (slugSnap.exists() && slugSnap.data()?.uid !== uid) {
       throw new Error('That DJ URL is already taken. Try a different name.')
     }
 
     transaction.set(slugRef, { uid })
 
-    if (oldRef && oldSnap?.exists() && oldSnap.data().uid === uid) {
-      transaction.delete(oldRef)
+    if (oldSlugRef && oldSnap?.exists() && oldSnap.data()?.uid === uid) {
+      transaction.delete(oldSlugRef)
     }
 
-    transaction.update(userRef, { djName: trimmed, djSlug })
+    if (userInTx.exists()) {
+      transaction.update(userRef, { djName: trimmed, djSlug })
+    } else {
+      transaction.set(userRef, {
+        djName: trimmed,
+        djSlug,
+        createdAt: serverTimestamp(),
+      })
+    }
   })
 
   const setsSnap = await getDocs(

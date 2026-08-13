@@ -2,17 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input, Label } from '@/components/ui/input'
+import { slugify } from '@/lib/slug'
 
 export function DjNameForm({
   djName,
   onSave,
   disabled,
   showSlugWarning,
+  savedSlug,
 }: {
   djName: string
   onSave: (djName: string) => Promise<void>
   disabled?: boolean
   showSlugWarning?: boolean
+  savedSlug?: string
 }) {
   const [value, setValue] = useState(djName)
   const [saving, setSaving] = useState(false)
@@ -126,6 +129,18 @@ export function DjNameForm({
       ) : null}
       {isDirty && !saving && !saved && trimmed ? (
         <p className="mt-2 text-sm text-white/40">Press Save to update your DJ name.</p>
+      ) : null}
+
+      {trimmed ? (
+        <p className="mt-4 text-sm text-white/50">
+          Your public voting URLs start with{' '}
+          <span className="font-mono text-white/70">
+            /s/{slugify(trimmed)}/
+          </span>
+          {isDirty || !savedSlug ? (
+            <span className="text-white/40"> (preview — save to confirm)</span>
+          ) : null}
+        </p>
       ) : null}
     </form>
   )

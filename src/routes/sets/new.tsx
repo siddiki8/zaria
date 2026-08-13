@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input, Label, Select } from '@/components/ui/input'
 import { useAuth } from '@/contexts/auth-context'
 import { createSet, allocateSetSlug } from '@/lib/sets'
+import { saveDjProfile } from '@/lib/users'
 import {
   DEFAULT_PRIMARY_COLOR,
   DEFAULT_SECONDARY_COLOR,
@@ -37,8 +38,7 @@ function NewSetPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const djName = profile?.djName.trim() ?? ''
-  const djSlug = profile?.djSlug
-  const needsDjName = !djName || !djSlug
+  const needsDjName = !djName
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -62,6 +62,11 @@ function NewSetPage() {
       }
 
       const setSlug = await allocateSetSlug(user.uid, name.trim())
+      let djSlug = profile?.djSlug
+      if (!djSlug) {
+        const saved = await saveDjProfile(user.uid, djName)
+        djSlug = saved.djSlug
+      }
 
       const normalizedPrimary = normalizeHexColor(primaryColor)
       const normalizedSecondary = normalizeHexColor(secondaryColor)
