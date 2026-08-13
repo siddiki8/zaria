@@ -36,14 +36,15 @@ function NewSetPage() {
   const [secondaryColor, setSecondaryColor] = useState(DEFAULT_SECONDARY_COLOR)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const djName = profile?.djName.trim() ?? ''
+  const djSlug = profile?.djSlug
+  const needsDjName = !djName || !djSlug
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!user || !name.trim()) return
 
-    const djName = profile?.djName.trim()
-    const djSlug = profile?.djSlug
-    if (!djName || !djSlug) {
+    if (needsDjName) {
       setError('Set your DJ name in Settings before creating a set.')
       return
     }
@@ -103,6 +104,18 @@ function NewSetPage() {
             <p className="mt-2 text-white/60">
               Start now for instant voting, or schedule a set for later.
             </p>
+
+            {needsDjName ? (
+              <div className="mt-8 rounded-2xl border border-[var(--accent)]/25 bg-[var(--accent)]/5 p-5">
+                <p className="text-sm text-white/80">
+                  Set your DJ name in Settings before creating a set. Fans see
+                  that name on your voting page and share links.
+                </p>
+                <Link to="/settings" className="mt-3 inline-block">
+                  <Button size="sm">Go to Settings</Button>
+                </Link>
+              </div>
+            ) : null}
 
             <form onSubmit={(event) => void handleSubmit(event)} className="mt-8 space-y-6">
               <div>
@@ -218,7 +231,12 @@ function NewSetPage() {
                 </p>
               ) : null}
 
-              <Button type="submit" size="lg" disabled={submitting} className="w-full sm:w-auto">
+              <Button
+                type="submit"
+                size="lg"
+                disabled={submitting || needsDjName}
+                className="w-full sm:w-auto"
+              >
                 {submitting ? 'Creating...' : 'Create set'}
               </Button>
             </form>

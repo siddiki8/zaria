@@ -13,7 +13,7 @@ service cloud.firestore {
     function setNotEnded(setId) {
       let set = setDoc(setId);
       return set.status != 'ended'
-        && request.time < set.startAt + duration(set.durationMinutes, 'm');
+        && request.time < set.startAt + duration.value(set.durationMinutes, 'm');
     }
 
     function validBallotSongIds(songIds) {

@@ -96,18 +96,20 @@ export async function saveDjProfile(uid: string, djName: string) {
     const slugRef = doc(getDb(), 'djSlugs', djSlug)
     const slugSnap = await transaction.get(slugRef)
 
+    const oldRef =
+      previousDjSlug && previousDjSlug !== djSlug
+        ? doc(getDb(), 'djSlugs', previousDjSlug)
+        : null
+    const oldSnap = oldRef ? await transaction.get(oldRef) : null
+
     if (slugSnap.exists() && slugSnap.data().uid !== uid) {
       throw new Error('That DJ URL is already taken. Try a different name.')
     }
 
     transaction.set(slugRef, { uid })
 
-    if (previousDjSlug && previousDjSlug !== djSlug) {
-      const oldRef = doc(getDb(), 'djSlugs', previousDjSlug)
-      const oldSnap = await transaction.get(oldRef)
-      if (oldSnap.exists() && oldSnap.data().uid === uid) {
-        transaction.delete(oldRef)
-      }
+    if (oldRef && oldSnap?.exists() && oldSnap.data().uid === uid) {
+      transaction.delete(oldRef)
     }
 
     transaction.update(userRef, { djName: trimmed, djSlug })
