@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase-admin/app'
-import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore'
+import { FieldValue, getFirestore } from 'firebase-admin/firestore'
 import {
   onDocumentWritten,
   type FirestoreEvent,
@@ -9,7 +9,6 @@ import {
 initializeApp()
 
 const SHARD_COUNT = 10
-const FLUSH_INTERVAL_MS = 1000
 
 function shardIndex(uid: string): number {
   let hash = 0
@@ -47,10 +46,10 @@ async function applyShardDelta(
   const shard = shardIndex(uid)
   const shardRef = db.doc(`sets/${setId}/songs/${songId}/shards/${shard}`)
   await shardRef.set({ count: FieldValue.increment(delta) }, { merge: true })
-  await maybeFlushVoteCount(db, setId, songId)
+  await flushVoteCount(db, setId, songId)
 }
 
-async function maybeFlushVoteCount(
+async function flushVoteCount(
   db: FirebaseFirestore.Firestore,
   setId: string,
   songId: string,
@@ -60,11 +59,6 @@ async function maybeFlushVoteCount(
   await db.runTransaction(async (transaction) => {
     const songSnap = await transaction.get(songRef)
     if (!songSnap.exists) return
-
-    const data = songSnap.data() ?? {}
-    const flushedAt = data.countFlushedAt as Timestamp | undefined
-    const lastFlush = flushedAt?.toMillis?.() ?? 0
-    if (Date.now() - lastFlush < FLUSH_INTERVAL_MS) return
 
     const shardRefs = Array.from({ length: SHARD_COUNT }, (_, i) =>
       db.doc(`sets/${setId}/songs/${songId}/shards/${i}`),
@@ -78,7 +72,6 @@ async function maybeFlushVoteCount(
 
     transaction.update(songRef, {
       voteCount: total,
-      countFlushedAt: FieldValue.serverTimestamp(),
     })
   })
 }
