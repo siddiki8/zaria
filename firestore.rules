@@ -20,6 +20,35 @@ service cloud.firestore {
       return songIds is list && songIds.size() <= 50;
     }
 
+    function validVoteTransition(setId, songId, uid) {
+      let ballot = /databases/$(database)/documents/sets/$(setId)/ballots/$(uid);
+      let song = /databases/$(database)/documents/sets/$(setId)/songs/$(songId);
+      let beforeIds = exists(ballot) ? get(ballot).data.songIds : [];
+      let afterBallot = getAfter(ballot);
+      let afterIds = afterBallot.data.songIds;
+      let delta = afterBallot.data.lastDelta;
+      let beforeSong = get(song).data;
+      let afterSong = getAfter(song).data;
+
+      return request.auth != null
+        && request.auth.uid == uid
+        && existsAfter(ballot)
+        && exists(song)
+        && beforeSong.played == false
+        && validBallotSongIds(beforeIds)
+        && validBallotSongIds(afterIds)
+        && afterBallot.data.keys().hasOnly(['songIds', 'lastSongId', 'lastDelta'])
+        && afterBallot.data.lastSongId == songId
+        && (delta == 1 || delta == -1)
+        && afterIds.size() == beforeIds.size() + delta
+        && (
+          (delta == 1 && !(songId in beforeIds) && songId in afterIds)
+          || (delta == -1 && songId in beforeIds && !(songId in afterIds))
+        )
+        && afterSong.diff(beforeSong).affectedKeys().hasOnly(['voteCount'])
+        && afterSong.voteCount == beforeSong.voteCount + delta;
+    }
+
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow create, update: if request.auth != null && request.auth.uid == userId;
@@ -47,16 +76,23 @@ service cloud.firestore {
         allow create, update: if request.auth != null
           && request.auth.uid == uid
           && setNotEnded(setId)
-          && request.resource.data.keys().hasOnly(['songIds'])
-          && validBallotSongIds(request.resource.data.songIds);
-        allow delete: if request.auth != null
-          && request.auth.uid == uid
-          && setNotEnded(setId);
+          && validVoteTransition(
+            setId,
+            request.resource.data.lastSongId,
+            uid
+          );
       }
 
       match /songs/{songId} {
         allow read: if true;
-        allow create, update, delete: if isDj(setId);
+        allow create, delete: if isDj(setId);
+        allow update: if isDj(setId)
+          || (
+            request.auth != null
+            &&
+            setNotEnded(setId)
+            && validVoteTransition(setId, songId, request.auth.uid)
+          );
 
         match /shards/{shardId} {
           allow read, write: if false;

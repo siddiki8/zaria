@@ -12,8 +12,7 @@
     "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
     "cf-typegen": "wrangler types",
-    "functions:build": "npm --prefix functions run build",
-    "firebase:deploy": "npm run functions:build && npx -y firebase-tools@latest deploy --only firestore,functions"
+    "firebase:deploy": "npx -y firebase-tools@latest deploy --only firestore"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",

@@ -341,9 +341,16 @@ export function subscribeToBallot(
 
 export async function toggleVote(setId: string, songId: string, uid: string) {
   const ballotRef = doc(getDb(), 'sets', setId, 'ballots', uid)
+  const songRef = doc(getDb(), 'sets', setId, 'songs', songId)
 
   await runTransaction(getDb(), async (transaction) => {
     const ballotSnap = await transaction.get(ballotRef)
+    const songSnap = await transaction.get(songRef)
+
+    if (!songSnap.exists() || songSnap.data().played === true) {
+      throw new Error('This song is no longer available for voting.')
+    }
+
     const currentIds: string[] = ballotSnap.exists()
       ? (ballotSnap.data().songIds ?? []).filter(
           (id: unknown): id is string => typeof id === 'string',
@@ -359,11 +366,12 @@ export async function toggleVote(setId: string, songId: string, uid: string) {
       throw new Error('You can vote for at most 50 songs at once.')
     }
 
-    if (nextIds.length === 0) {
-      if (ballotSnap.exists()) transaction.delete(ballotRef)
-      return
-    }
-
-    transaction.set(ballotRef, { songIds: nextIds })
+    const delta = hasVote ? -1 : 1
+    transaction.set(ballotRef, {
+      songIds: nextIds,
+      lastSongId: songId,
+      lastDelta: delta,
+    })
+    transaction.update(songRef, { voteCount: increment(delta) })
   })
 }
