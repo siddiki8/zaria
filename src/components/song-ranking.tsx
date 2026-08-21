@@ -101,7 +101,10 @@ function RankRow({
     >
       <div
         className={cn(
-          'rank-item-inner relative flex items-center gap-4 rounded-2xl border p-4',
+          'rank-item-inner relative flex rounded-2xl border p-3 sm:p-4',
+          djView
+            ? 'flex-col gap-3 sm:flex-row sm:items-center sm:gap-4'
+            : 'items-center gap-3 sm:gap-4',
           palette
             ? 'border-[color-mix(in_srgb,var(--art-vibrant)_32%,rgba(255,255,255,0.08))]'
             : 'border-white/8 bg-white/[0.03]',
@@ -135,50 +138,66 @@ function RankRow({
           </div>
         ) : null}
 
+        <div className="relative z-10 flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
+          <div
+            className={cn(
+              'w-8 shrink-0 text-center text-lg font-bold tabular-nums transition-colors duration-300',
+              rankFlash === 'down' && 'text-white/45',
+            )}
+            style={
+              rankFlash === 'down'
+                ? undefined
+                : { color: artColor ?? 'var(--accent)' }
+            }
+          >
+            #{index + 1}
+          </div>
+
+          {song.artworkUrl ? (
+            <img
+              src={song.artworkUrl}
+              alt=""
+              className="h-12 w-12 shrink-0 rounded-xl object-cover shadow-[0_0_18px_color-mix(in_srgb,var(--art-vibrant)_28%,transparent)] ring-1 ring-white/15 sm:h-14 sm:w-14"
+              draggable={false}
+            />
+          ) : (
+            <div className="h-12 w-12 shrink-0 rounded-xl bg-white/5 sm:h-14 sm:w-14" />
+          )}
+
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-base font-semibold text-white drop-shadow">
+              {song.title}
+            </p>
+            <p className="truncate text-sm text-white/70">{song.artist}</p>
+          </div>
+
+          {djView ? (
+            <VoteCount
+              count={song.voteCount}
+              className="min-w-8 shrink-0 text-right text-sm font-semibold sm:hidden"
+              style={{ color: artColor ?? 'var(--accent)' }}
+            />
+          ) : null}
+        </div>
+
         <div
           className={cn(
-            'relative z-10 w-8 shrink-0 text-center text-lg font-bold tabular-nums transition-colors duration-300',
-            rankFlash === 'down' && 'text-white/45',
+            'relative z-10 flex items-center gap-2',
+            djView && 'w-full sm:w-auto sm:shrink-0',
           )}
-          style={
-            rankFlash === 'down'
-              ? undefined
-              : { color: artColor ?? 'var(--accent)' }
-          }
         >
-          #{index + 1}
-        </div>
-
-        {song.artworkUrl ? (
-          <img
-            src={song.artworkUrl}
-            alt=""
-            className="relative z-10 h-14 w-14 shrink-0 rounded-xl object-cover shadow-[0_0_18px_color-mix(in_srgb,var(--art-vibrant)_28%,transparent)] ring-1 ring-white/15"
-            draggable={false}
-          />
-        ) : (
-          <div className="relative z-10 h-14 w-14 shrink-0 rounded-xl bg-white/5" />
-        )}
-
-        <div className="relative z-10 min-w-0 flex-1">
-          <p className="truncate text-base font-semibold text-white drop-shadow">
-            {song.title}
-          </p>
-          <p className="truncate text-sm text-white/70">{song.artist}</p>
-        </div>
-
-        <div className="relative z-10 flex items-center gap-2">
           {djView ? (
             <>
               <VoteCount
                 count={song.voteCount}
-                className="min-w-12 text-right text-sm font-semibold"
+                className="hidden min-w-12 text-right text-sm font-semibold sm:inline-block"
                 style={{ color: artColor ?? 'var(--accent)' }}
               />
               {onMarkPlayed ? (
                 <Button
                   size="sm"
                   variant="secondary"
+                  className="flex-1 sm:flex-none"
                   onClick={() => onMarkPlayed(song.id)}
                 >
                   Played
@@ -188,6 +207,7 @@ function RankRow({
                 <Button
                   size="sm"
                   variant="danger"
+                  className="flex-1 sm:flex-none"
                   onClick={() => onRemove(song.id)}
                 >
                   Remove
@@ -287,10 +307,10 @@ function VoteCount({
   return (
     <span
       className={cn(
-        className,
         'inline-block',
         delta === 'up' && 'vote-count-up',
         delta === 'down' && 'vote-count-down',
+        className,
       )}
       style={style}
     >
